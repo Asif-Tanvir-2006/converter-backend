@@ -73,7 +73,7 @@ def upload_files():
                     "-c:v", "libx264",          # efficient video codec
                     "-crf", "28",               # reduce memory usage
                     "-preset", "ultrafast",
-                    "-threads", "1",      # optimize for low RAM
+                    "-threads", "5",      # optimize for low RAM
                     "-movflags", "+faststart",  # helps with streaming
                     "-c:a", "mp3",              # audio codec
                     "-strict", "-2",
