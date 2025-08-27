@@ -23,15 +23,18 @@ def is_image(filename: str) -> bool:
 def is_video(filename: str) -> bool:
     ext = os.path.splitext(filename)[1].lower()
     return ext in [".mp4", ".mkv", ".mov", ".avi", ".flv"]
+
+
 def is_audio(filename: str) -> bool:
     ext = os.path.splitext(filename)[1].lower()
     return ext in [".mp3", ".wav", ".ogg", ".aac", ".flac"]
+
 
 @app.route("/upload", methods=["POST"])
 def upload_files():
     if "files" not in request.files:
         return jsonify({"error": "No files uploaded"}), 400
-    
+
     files = request.files.getlist("files")
     fmt = request.form.get("format", "mp4")  # default to mp4
 
@@ -60,16 +63,24 @@ def upload_files():
                 with Image.open(input_path) as img:
                     img = img.convert("RGB") if fmt.lower() in ["jpg", "jpeg", "bmp"] else img
                     img.save(output_path, fmt.upper())
-            
-            elif is_video(filename):
-                # Convert video/audio using ffmpeg
-                cmd = ["ffmpeg", "-y", "-i", input_path, output_path]
+
+            elif is_video(filename) or is_audio(filename):
+                # Convert video/audio using memory-friendly FFmpeg
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-i", input_path,
+                    "-c:v", "libx264",          # efficient video codec
+                    "-crf", "28",               # reduce memory usage
+                    "-preset", "ultrafast",
+                    "-threads", "1",      # optimize for low RAM
+                    "-movflags", "+faststart",  # helps with streaming
+                    "-c:a", "mp3",              # audio codec
+                    "-strict", "-2",
+                    output_path
+                ]
                 subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            elif is_audio(filename):
-                # Convert video/audio using ffmpeg
-                cmd = ["ffmpeg", "-y", "-i", input_path, output_path]
-                subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            
+
             else:
                 return jsonify({"error": f"Unsupported file type: {filename}"}), 400
 
@@ -103,4 +114,3 @@ def download_zip(session_id, filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-
